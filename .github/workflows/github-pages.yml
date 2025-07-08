@@ -1,0 +1,191 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          
+      - name: Create static build
+        run: |
+          mkdir -p _site
+          cp -r templates/* _site/
+          cp -r static/* _site/ 2>/dev/null || true
+          
+          # Create index.html for GitHub Pages
+          cat > _site/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>KPCL OTP Automation System</title>
+            <style>
+              body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                margin: 0;
+                padding: 0;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              }
+              .container {
+                background: white;
+                padding: 2rem;
+                border-radius: 15px;
+                box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+                text-align: center;
+                max-width: 600px;
+                margin: 2rem;
+              }
+              .logo {
+                font-size: 2.5rem;
+                color: #667eea;
+                margin-bottom: 1rem;
+              }
+              h1 {
+                color: #333;
+                margin-bottom: 1rem;
+              }
+              .status {
+                background: #e8f5e8;
+                color: #2d5d2d;
+                padding: 1rem;
+                border-radius: 8px;
+                margin: 1rem 0;
+                border-left: 4px solid #4caf50;
+              }
+              .btn {
+                display: inline-block;
+                background: #667eea;
+                color: white;
+                padding: 12px 24px;
+                text-decoration: none;
+                border-radius: 8px;
+                margin: 0.5rem;
+                transition: all 0.3s ease;
+              }
+              .btn:hover {
+                background: #5a6fd8;
+                transform: translateY(-2px);
+              }
+              .info {
+                background: #f0f8ff;
+                padding: 1rem;
+                border-radius: 8px;
+                margin: 1rem 0;
+                text-align: left;
+              }
+              .schedule {
+                background: #fff3cd;
+                color: #856404;
+                padding: 1rem;
+                border-radius: 8px;
+                margin: 1rem 0;
+                border-left: 4px solid #ffc107;
+              }
+              .footer {
+                margin-top: 2rem;
+                color: #666;
+                font-size: 0.9rem;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="logo">🚀</div>
+              <h1>KPCL OTP Automation System</h1>
+              
+              <div class="status">
+                ✅ System is Live and Ready
+              </div>
+              
+              <div class="schedule">
+                <strong>📅 Daily Schedule:</strong><br>
+                <strong>6:45-6:55 AM:</strong> User Login Window<br>
+                <strong>6:59:59 AM:</strong> Automated Form Submission
+              </div>
+              
+              <div class="info">
+                <h3>🔗 Access Points:</h3>
+                <p><strong>Production App:</strong> <span id="aws-url">AWS Lambda URL (will be available after deployment)</span></p>
+                <p><strong>Login Time:</strong> Access between 6:45-6:55 AM daily for session refresh</p>
+                <p><strong>GitHub Repository:</strong> <a href="https://github.com/YOUR_USERNAME/kpcl-otp-automation" target="_blank">View Source Code</a></p>
+              </div>
+              
+              <a href="#" class="btn" onclick="checkAWSEndpoint()">🔄 Check AWS Status</a>
+              <a href="https://github.com/YOUR_USERNAME/kpcl-otp-automation" class="btn" target="_blank">📚 Documentation</a>
+              
+              <div class="footer">
+                <p>⚠️ <strong>Important:</strong> Login between 6:45-6:55 AM daily to refresh your session</p>
+                <p>🤖 Automated submission occurs at exactly 6:59:59.99 AM</p>
+              </div>
+            </div>
+            
+            <script>
+              function checkAWSEndpoint() {
+                // This will be updated with actual AWS API Gateway URL
+                const awsUrl = 'YOUR_AWS_API_GATEWAY_URL';
+                if (awsUrl.includes('YOUR_AWS')) {
+                  alert('AWS deployment in progress. Please deploy to AWS first.');
+                } else {
+                  window.open(awsUrl, '_blank');
+                }
+              }
+              
+              // Update AWS URL if available
+              const urlParams = new URLSearchParams(window.location.search);
+              const awsUrl = urlParams.get('aws_url');
+              if (awsUrl) {
+                document.getElementById('aws-url').innerHTML = `<a href="${awsUrl}" target="_blank">${awsUrl}</a>`;
+              }
+            </script>
+          </body>
+          </html>
+          EOF
+          
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+        
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: '_site'
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2

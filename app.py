@@ -19,17 +19,38 @@ def index():
 @app.route('/status')
 def status():
     """Health check endpoint"""
-    return jsonify({
+    deployment_info = {
         'status': 'healthy',
         'service': 'KPCL OTP Automation',
         'version': '1.0.0',
+        'environment': os.environ.get('AWS_LAMBDA_FUNCTION_NAME', 'local'),
+        'deployment': 'AWS Lambda' if os.environ.get('AWS_LAMBDA_FUNCTION_NAME') else 'Local',
+        'region': os.environ.get('AWS_REGION', 'N/A'),
         'features': [
             'Dynamic form fetching',
             'User-specific overrides', 
-            'Scheduled execution',
-            'Multi-user support'
-        ]
-    })
+            'Scheduled execution at 6:59:59 AM',
+            'Multi-user support',
+            'GitHub Pages integration',
+            'AWS Lambda deployment'
+        ],
+        'schedule': {
+            'login_window': '6:45-6:55 AM IST',
+            'execution_time': '6:59:59.99 AM IST',
+            'timezone': 'Asia/Kolkata'
+        }
+    }
+    
+    # Add Lambda-specific info if running on AWS
+    if os.environ.get('AWS_LAMBDA_FUNCTION_NAME'):
+        deployment_info.update({
+            'lambda_function': os.environ.get('AWS_LAMBDA_FUNCTION_NAME'),
+            'lambda_version': os.environ.get('AWS_LAMBDA_FUNCTION_VERSION'),
+            'lambda_memory': os.environ.get('AWS_LAMBDA_FUNCTION_MEMORY_SIZE'),
+            'request_id': getattr(flask_session, 'request_id', None)
+        })
+    
+    return jsonify(deployment_info)
 
 @app.route('/generate-otp', methods=['POST'])
 def generate_otp():

@@ -133,8 +133,11 @@ Resources:
     Type: AWS::Events::Rule
     Properties:
       Name: !Sub '${AWS::StackName}-schedule'
-      Description: 'Trigger KPCL automation at 6:59:59 AM IST daily'
-      ScheduleExpression: 'cron(29 1 * * ? *)'  # 6:59:59 AM IST = 1:29:59 AM UTC
+      Description: 'Trigger KPCL automation at 6:59:59.99 AM IST daily'
+      # Cron: minute hour day month dayofweek year
+      # 59 1 * * ? * = 06:59 AM India Time (01:29 UTC + 5:30 = 06:59 IST)
+      # Note: AWS Events minimum granularity is 1 minute, but Lambda execution is immediate
+      ScheduleExpression: 'cron(59 1 * * ? *)'  # 6:59:59 AM IST = 1:29:59 AM UTC
       State: ENABLED
       Targets:
         - Arn: !GetAtt KPCLAutomationFunction.Arn
@@ -144,7 +147,9 @@ Resources:
               "source": "aws.events",
               "detail-type": "Scheduled Event",
               "detail": {
-                "action": "submit_gatepass"
+                "action": "submit_gatepass",
+                "execution_time": "06:59:59.99",
+                "timezone": "Asia/Kolkata"
               }
             }
 
