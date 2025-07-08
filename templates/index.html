@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>KPCL Login</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 40px;
+    }
+    input {
+      padding: 8px;
+      margin: 6px;
+      width: 250px;
+    }
+    button {
+      padding: 8px 20px;
+      margin: 10px;
+      cursor: pointer;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    #status {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .info {
+      background-color: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>KPCL AMS Login</h2>
+
+  <form id="loginForm" onsubmit="return false;">
+    <label>Username:</label><br>
+    <input type="text" id="username" value="1901981" readonly><br>
+
+    <label>Password:</label><br>
+    <input type="password" id="password" required><br>
+
+    <button id="getOtpBtn" onclick="requestOtp()">Get OTP</button><br>
+
+    <div id="otpSection" style="display:none;">
+      <label>Enter OTP:</label><br>
+      <input type="text" id="otp" maxlength="6"><br>
+      <button onclick="verifyOtp()">Login</button>
+    </div>
+  </form>
+
+  <div id="status"></div>
+
+  <script>
+    function setStatus(message, type = 'info') {
+      const statusEl = document.getElementById('status');
+      statusEl.innerText = message;
+      statusEl.className = type;
+    }
+
+    function requestOtp() {
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const getOtpBtn = document.getElementById('getOtpBtn');
+      
+      if (!password.trim()) {
+        setStatus("Please enter your password.", "error");
+        return;
+      }
+
+      // Disable button and show loading
+      getOtpBtn.disabled = true;
+      getOtpBtn.innerText = "Sending OTP...";
+      setStatus("Requesting OTP...", "info");
+
+      fetch('/generate-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      })
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+        return res.json();
+      })
+      .then(data => {
+        if (data.success) {
+          setStatus(data.message || "OTP sent to your registered mobile number.", "success");
+          document.getElementById('otpSection').style.display = "block";
+        } else {
+          setStatus(data.error || "Invalid credentials.", "error");
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        setStatus(`Network error: ${error.message}`, "error");
+      })
+      .finally(() => {
+        // Re-enable button
+        getOtpBtn.disabled = false;
+        getOtpBtn.innerText = "Get OTP";
+      });
+    }
+
+    function verifyOtp() {
+      const otp = document.getElementById('otp').value;
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      
+      if (!otp.trim()) {
+        setStatus("Please enter the OTP.", "error");
+        return;
+      }
+      
+      if (otp.length !== 6) {
+        setStatus("OTP must be 6 digits.", "error");
+        return;
+      }
+
+      setStatus("Verifying OTP...", "info");
+      
+      fetch('/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, otp, password })
+      })
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+        return res.json();
+      })
+      .then(data => {
+        if (data.success) {
+          setStatus(data.message || "Login successful! You are now logged in to KPCL AMS.", "success");
+          document.getElementById('otpSection').style.display = "none";
+          // Redirect to gatepass page after successful login
+          setTimeout(() => {
+            window.location.href = '/gatepass';
+          }, 1500);
+        } else {
+          setStatus(data.error || "Invalid OTP.", "error");
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        setStatus(`Network error: ${error.message}`, "error");
+      });
+    }
+  </script>
+</body>
+</html>

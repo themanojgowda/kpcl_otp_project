@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Fly Ash Gatepass</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Bootstrap CSS (optional, for better styling) -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <!-- jQuery (required for AJAX) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+<div class="container" style="margin-top:30px;">
+    <h2>Fly Ash Gatepass Form</h2>
+    <form id="gatepassForm" name="myForm">
+        <div class="box-body">
+            <div class="form-group">
+                <div class="col-xs-3">
+                    <label>Purpose of Fly Ash Utilization</label>
+                </div>
+                <div class="col-xs-3">
+                    <select name="ash_utilization" required class="form-control">
+                        <option value="">Choose one</option>
+                        <option value="Ash_based_Products">Ash based Products</option>
+                        <option value="Bricks">Bricks</option>
+                        <option value="Blocks">Blocks</option>
+                        <option value="Tiles">Tiles</option>
+                    </select>
+                </div>
+                <div class="col-xs-3">
+                    <label>Timing</label>
+                </div>
+                <div class="col-xs-3">
+                    <select name="pickup_time" required class="form-control">
+                        <option value="">Choose one</option>
+                        <option value="07.00AM - 08.00AM">07.00AM - 08.00AM</option>
+                        <option value="08.00AM - 09.00AM">08.00AM - 09.00AM</option>
+                        <option value="09.00AM - 10.00AM">09.00AM - 10.00AM</option>
+                        <option value="11.00AM - 12.00PM">11.00AM - 12.00PM</option>
+                        <option value="12.00PM - 01.00PM">12.00PM - 01.00PM</option>
+                        <option value="01.00PM - 02.00PM">01.00PM - 02.00PM</option>
+                        <option value="02.00PM - 03.00PM">02.00PM - 03.00PM</option>
+                        <option value="03.00PM - 04.00PM">03.00PM - 04.00PM</option>
+                        <option value="04.00PM - 05.00PM">04.00PM - 05.00PM</option>
+                        <option value="05.00PM - 06.00PM">05.00PM - 06.00PM</option>
+                        <option value="06.00PM - 07.00PM">06.00PM - 07.00PM</option>
+                        <option value="07.00PM - 08.00PM">07.00PM - 08.00PM</option>
+                        <option value="08.00PM - 09.00PM">08.00PM - 09.00PM</option>
+                        <option value="09.00PM - 10.00PM">09.00PM - 10.00PM</option>
+                        <option value="10.00PM - 11.00PM">10.00PM - 11.00PM</option>
+                        <option value="11.00PM - 12.00AM">11.00PM - 12.00AM</option>
+                        <option value="01.00AM - 02.00AM">01.00AM - 02.00AM</option>
+                        <option value="02.00AM - 03.00AM">02.00AM - 03.00AM</option>
+                        <option value="03.00AM - 04.00AM">03.00AM - 04.00AM</option>
+                        <option value="04.00AM - 05.00AM">04.00AM - 05.00AM</option>
+                        <option value="05.00AM - 06.00AM">05.00AM - 06.00AM</option>
+                        <option value="06.00AM - 07.00AM">06.00AM - 07.00AM</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group" style="display:none">
+                <div class="col-xs-3">
+                    <label>Silo No</label>
+                </div>
+                <input type="hidden" name="silo_name" id="silo_name">
+                <div class="col-xs-3" id="normalashType" style="display:block;">
+                    <select name="silo_no" class="form-control" id="nsilo">
+                        <option value="">Select</option>
+                        <option value="Silo 1">Silo 1</option>
+                        <option value="Silo 2">Silo 2</option>
+                        <option value="Silo 3">Silo 3</option>
+                        <option value="Silo 4">Silo 4</option>
+                        <option value="Silo 5">Silo 5</option>
+                    </select>
+                </div>
+                <div class="col-xs-3" id="extraashType" style="display:none;">
+                    <select name="silo_no" class="form-control" id="esilo">
+                        <option value="">Select</option>
+                        <option value="Silo 1">Silo 1</option>
+                        <option value="Silo 2">Silo 2</option>
+                        <option value="Silo 3">Silo 3</option>
+                        <option value="Silo 4">Silo 4</option>
+                        <option value="Silo 5">Silo 5</option>
+                    </select>
+                </div>
+                <div class="col-xs-3">
+                    <label>TPS Name</label>
+                </div>
+                <div class="col-xs-3">
+                    <input type="text" name="tps" class="form-control" value="BTPS" readonly>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-xs-3">
+                    <label>Type of Vehicle</label>
+                </div>
+                <div class="col-xs-3">
+                    <select name="vehi_type" id="vehi_type" required class="form-control">
+                        <option value="">Select</option>
+                        <option value="Closed Tipper">Closed Tipper</option>
+                        <option value="10">Bulker 10 Wheeler</option>
+                        <option value="12">Bulker 12 Wheeler</option>
+                        <option value="14">Bulker 14 Wheeler</option>
+                        <option value="16">Bulker 16 Wheeler</option>
+                        <option value="22">Bulker 22 Wheeler</option>
+                    </select>
+                </div>
+                <div class="col-xs-3">
+                    <label>Quantity Limit</label>
+                </div>
+                <div class="col-xs-3">
+                    <input type="text" id="qty_fly_ash" name="qty_fly_ash" class="form-control" readonly required>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-xs-3">
+                    <label>Vehicle Type</label>
+                </div>
+                <div class="col-xs-3">
+                    <input type="radio" name="vehi_type_oh" value="own"> Own
+                    <input type="radio" name="vehi_type_oh" value="hired"> Hired
+                </div>
+                <div class="col-xs-3">
+                    <label>Select Authorised Person</label>
+                </div>
+                <div class="col-xs-3">
+                    <select name="authorised_person" id="authorised_person" required class="form-control">
+                        <option value="">Select</option>
+                        <option value="Manjula">Manjula</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group" id="own_vehi" style="display: none;">
+                <div class="col-xs-3">
+                    <label>Own Vehicle No</label>
+                </div>
+                <div class="col-xs-3">
+                    <input type="text" name="vehicle_no" class="form-control" placeholder="Enter vehicle number">
+                </div>
+                <div class="col-xs-3">
+                    <label>Driver Licence</label>
+                </div>
+                <div class="col-xs-3">
+                    <input type="text" name="dl_no" class="form-control">
+                </div>
+            </div>
+            <div id="hire_vehi" style="display: block;">
+                <div class="form-group">
+                    <div class="ui-widget">
+                        <div class="col-xs-3">
+                            <label>Hired Vehicle No</label>
+                        </div>
+                        <div class="col-xs-9">
+                            <input type="text" name="vehicle_no1" id="vehicle_no1" class="form-control" placeholder="Enter vehicle number">
+                        </div>
+                    </div>
+                    <div class="col-xs-3" style="margin-top: 15px;">
+                        <label>Driver Licence</label>
+                    </div>
+                    <div class="col-xs-3" style="margin-top: 15px;">
+                        <input type="text" name="dl_no" class="form-control">
+                    </div>
+                    <div class="col-xs-3" style="margin-top: 15px;">
+                        <label>Driver Mobile No</label>
+                    </div>
+                    <div class="col-xs-3" style="margin-top: 15px;">
+                        <input type="text" name="driver_mob_no1" class="form-control" pattern="[6789][0-9]{9}" maxlength="10">
+                    </div>
+                </div>
+            </div>
+            <!-- Hidden field for username -->
+            <input type="hidden" name="username" id="username" value="1901981">
+            
+            <!-- Additional hidden fields to match cURL command -->
+            <input type="hidden" name="gp_flag" value="">
+            <input type="hidden" name="generate_flyash_gatepass" value="">
+            <input type="hidden" name="ash_price" value="150">
+            <input type="hidden" name="balance_amount" value="18078.489999999998">
+            <input type="hidden" name="total_extra" value="1146.89">
+            <input type="hidden" name="full_flyash" value="50">
+            <input type="hidden" name="extra_flyash" value="1.47">
+            
+            <div class="box-footer" style="text-align: center;">
+                <button type="submit" name="generate_flyash_gatepass" class="btn btn-primary">
+                    Generate your Fly Ash Gatepass
+                </button>
+            </div>
+        </div>
+    </form>
+    <div id="gatepass-response" style="margin-top:30px;"></div>
+</div>
+<script>
+$(document).ready(function() {
+    // Vehicle type change handler
+    $('#vehi_type').on('change', function() {
+        var vehicleType = $(this).val();
+        var qtyLimit = '';
+        
+        switch(vehicleType) {
+            case 'Closed Tipper':
+                qtyLimit = '15';
+                break;
+            case '10':
+                qtyLimit = '20';
+                break;
+            case '12':
+                qtyLimit = '25';
+                break;
+            case '14':
+                qtyLimit = '30';
+                break;
+            case '16':
+                qtyLimit = '36';
+                break;
+            case '22':
+                qtyLimit = '50';
+                break;
+            default:
+                qtyLimit = '';
+        }
+        
+        $('#qty_fly_ash').val(qtyLimit);
+    });
+    
+    // Vehicle ownership type change handler
+    $('input[name="vehi_type_oh"]').on('change', function() {
+        if ($(this).val() === 'own') {
+            $('#own_vehi').show();
+            $('#hire_vehi').hide();
+        } else {
+            $('#own_vehi').hide();
+            $('#hire_vehi').show();
+        }
+    });
+    
+    $('#gatepassForm').on('submit', function(e) {
+        e.preventDefault();
+        var formData = $(this).serialize();
+        
+        $.ajax({
+            url: '/submit-gatepass',
+            type: 'POST',
+            data: formData,
+            dataType: 'json',
+            success: function(resp) {
+                if (resp.success) {
+                    $('#gatepass-response').html('<div class="alert alert-success">Gatepass submitted successfully!</div>');
+                    $('#gatepassForm').hide();
+                } else {
+                    $('#gatepass-response').html('<div class="alert alert-danger">' + resp.error + '</div>');
+                }
+            },
+            error: function(xhr) {
+                var errorMsg = 'Submission failed';
+                try {
+                    var errorResponse = JSON.parse(xhr.responseText);
+                    errorMsg = errorResponse.error || errorMsg;
+                } catch (e) {
+                    errorMsg = xhr.responseText || errorMsg;
+                }
+                $('#gatepass-response').html('<div class="alert alert-danger">' + errorMsg + '</div>');
+            }
+        });
+    });
+});
+</script>
+</body>
+</html>

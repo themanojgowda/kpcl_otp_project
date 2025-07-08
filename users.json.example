@@ -1,0 +1,25 @@
+[
+  {
+    "username": "example_user",
+    "cookies": {
+      "PHPSESSID": "your_session_id_here"
+    },
+    "user_form_data": {
+      "ash_utilization": "Ash_based_Products",
+      "pickup_time": "07.00AM - 08.00AM",
+      "silo_name": "",
+      "silo_no": "",
+      "tps": "BTPS",
+      "vehi_type": "16",
+      "qty_fly_ash": "36",
+      "vehi_type_oh": "hired",
+      "authorised_person": "Manjula ",
+      "vehicle_no": "",
+      "dl_no": "9654",
+      "driver_mob_no": "",
+      "vehicle_no1": "KA36C5418",
+      "driver_mob_no1": "9740856523",
+      "generate_flyash_gatepass": ""
+    }
+  }
+]

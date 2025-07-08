@@ -1,0 +1,7 @@
+# List your Python dependencies here, one per line.
+Flask
+flask-cors
+requests
+apscheduler
+httpx
+beautifulsoup4

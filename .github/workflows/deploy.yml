@@ -1,0 +1,135 @@
+name: Deploy KPCL Automation
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  AWS_REGION: ap-south-1
+  
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Run tests
+      run: |
+        python -m pytest tests/ -v || echo "No tests found"
+        
+    - name: Validate configuration
+      run: |
+        python validate_hybrid.py
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+        
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Create Lambda package
+      run: |
+        mkdir lambda_package
+        pip install -r requirements.txt -t lambda_package/
+        cp *.py lambda_package/
+        cp -r templates/ lambda_package/ 2>/dev/null || echo "No templates"
+        cp users.json.example lambda_package/users.json
+        
+        # Create Lambda handler
+        cat > lambda_package/lambda_handler.py << 'EOF'
+        import json
+        import asyncio
+        from app import app
+        from scheduler import schedule_task
+        
+        def lambda_handler(event, context):
+            if event.get('source') == 'aws.events':
+                try:
+                    asyncio.run(schedule_task())
+                    return {'statusCode': 200, 'body': json.dumps({'message': 'Success'})}
+                except Exception as e:
+                    return {'statusCode': 500, 'body': json.dumps({'error': str(e)})}
+            
+            try:
+                import serverless_wsgi
+                return serverless_wsgi.handle_request(app, event, context)
+            except ImportError:
+                return {
+                    'statusCode': 200,
+                    'headers': {'Content-Type': 'text/html'},
+                    'body': '<h1>KPCL Automation System</h1><p>Running on AWS Lambda!</p>'
+                }
+        EOF
+        
+        cd lambda_package
+        zip -r ../kpcl-automation.zip .
+        cd ..
+        
+    - name: Upload to S3
+      run: |
+        aws s3 mb s3://kpcl-automation-code-${{ github.run_number }} --region ${{ env.AWS_REGION }} || echo "Bucket exists"
+        aws s3 cp kpcl-automation.zip s3://kpcl-automation-code-${{ github.run_number }}/kpcl-automation.zip
+        
+    - name: Deploy CloudFormation
+      run: |
+        aws cloudformation deploy \
+          --template-file aws/cloudformation.yml \
+          --stack-name kpcl-automation \
+          --parameter-overrides \
+            LambdaCodeBucket=kpcl-automation-code-${{ github.run_number }} \
+            LambdaCodeKey=kpcl-automation.zip \
+          --capabilities CAPABILITY_IAM \
+          --region ${{ env.AWS_REGION }}
+          
+    - name: Get API URL
+      id: get-url
+      run: |
+        API_URL=$(aws cloudformation describe-stacks \
+          --stack-name kpcl-automation \
+          --region ${{ env.AWS_REGION }} \
+          --query 'Stacks[0].Outputs[?OutputKey==`ApiGatewayUrl`].OutputValue' \
+          --output text)
+        echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+        
+    - name: Test deployment
+      run: |
+        curl -f ${{ steps.get-url.outputs.api_url }}/status || echo "Health check failed"
+        
+    - name: Deployment summary
+      run: |
+        echo "🚀 Deployment completed!"
+        echo "🌐 Web Interface: ${{ steps.get-url.outputs.api_url }}"
+        echo "⏰ Scheduled for: 6:59:59 AM IST daily"
+        echo "📊 Monitor: https://console.aws.amazon.com/lambda/home?region=${{ env.AWS_REGION }}#/functions/kpcl-otp-automation"

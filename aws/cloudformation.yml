@@ -1,0 +1,230 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'KPCL OTP Automation System - Serverless Deployment'
+
+Parameters:
+  LambdaCodeBucket:
+    Type: String
+    Description: S3 bucket containing Lambda code
+  LambdaCodeKey:
+    Type: String
+    Description: S3 key for Lambda code ZIP
+
+Resources:
+  # Lambda Execution Role
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-lambda-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: SecretsManagerAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref UserConfigSecret
+
+  # Lambda Function
+  KPCLAutomationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-function'
+      Runtime: python3.9
+      Handler: lambda_handler.lambda_handler
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: !Ref LambdaCodeKey
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 300
+      MemorySize: 512
+      Environment:
+        Variables:
+          FLASK_ENV: production
+          USER_CONFIG_SECRET: !Ref UserConfigSecret
+
+  # Secrets Manager for user configuration
+  UserConfigSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${AWS::StackName}/users'
+      Description: 'User configuration for KPCL automation'
+      SecretString: |
+        [
+          {
+            "username": "example_user",
+            "cookies": {
+              "PHPSESSID": "update_with_real_session"
+            },
+            "user_form_data": {
+              "ash_utilization": "Ash_based_Products",
+              "pickup_time": "07.00AM - 08.00AM",
+              "vehi_type": "16",
+              "vehicle_no1": "KA36C5418",
+              "driver_mob_no1": "9740856523"
+            }
+          }
+        ]
+
+  # API Gateway
+  ApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub '${AWS::StackName}-api'
+      Description: KPCL OTP Automation API
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  # API Gateway Resource (catch-all)
+  ApiGatewayResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ParentId: !GetAtt ApiGateway.RootResourceId
+      PathPart: '{proxy+}'
+
+  # API Gateway Method
+  ApiGatewayMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ApiGatewayResource
+      HttpMethod: ANY
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${KPCLAutomationFunction.Arn}/invocations'
+
+  # Root method for API Gateway
+  ApiGatewayRootMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !GetAtt ApiGateway.RootResourceId
+      HttpMethod: ANY
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${KPCLAutomationFunction.Arn}/invocations'
+
+  # Lambda Permission for API Gateway
+  ApiGatewayInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref KPCLAutomationFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub '${ApiGateway}/*/*'
+
+  # CloudWatch Event Rule for Scheduling
+  ScheduleRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${AWS::StackName}-schedule'
+      Description: 'Trigger KPCL automation at 6:59:59 AM IST daily'
+      ScheduleExpression: 'cron(29 1 * * ? *)'  # 6:59:59 AM IST = 1:29:59 AM UTC
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt KPCLAutomationFunction.Arn
+          Id: KPCLScheduleTarget
+          Input: |
+            {
+              "source": "aws.events",
+              "detail-type": "Scheduled Event",
+              "detail": {
+                "action": "submit_gatepass"
+              }
+            }
+
+  # Permission for CloudWatch Events
+  SchedulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref KPCLAutomationFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ScheduleRule.Arn
+
+  # API Gateway Deployment
+  ApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - ApiGatewayMethod
+      - ApiGatewayRootMethod
+    Properties:
+      RestApiId: !Ref ApiGateway
+      StageName: prod
+
+  # CloudWatch Log Group
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${KPCLAutomationFunction}'
+      RetentionInDays: 30
+
+  # CloudWatch Alarm for Lambda Errors
+  LambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${AWS::StackName}-lambda-errors'
+      AlarmDescription: 'KPCL Lambda function errors'
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref KPCLAutomationFunction
+      AlarmActions:
+        - !Ref SNSTopic
+
+  # SNS Topic for Alerts
+  SNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${AWS::StackName}-alerts'
+      DisplayName: 'KPCL Automation Alerts'
+
+Outputs:
+  ApiGatewayUrl:
+    Description: 'API Gateway URL for web interface'
+    Value: !Sub 'https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod'
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiUrl'
+
+  LambdaFunctionArn:
+    Description: 'Lambda Function ARN'
+    Value: !GetAtt KPCLAutomationFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-LambdaArn'
+
+  UserConfigSecret:
+    Description: 'Secrets Manager ARN for user configuration'
+    Value: !Ref UserConfigSecret
+    Export:
+      Name: !Sub '${AWS::StackName}-UserSecret'
+
+  SNSTopicArn:
+    Description: 'SNS Topic ARN for alerts'
+    Value: !Ref SNSTopic
+    Export:
+      Name: !Sub '${AWS::StackName}-SNSTopic'
+
+  ScheduleExpression:
+    Description: 'CloudWatch Events schedule expression'
+    Value: 'cron(29 1 * * ? *) - Daily at 6:59:59 AM IST'
