@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'KPCL OTP Automation System - Serverless Deployment'
+Description: 'KPCL OTP Automation System - Serverless Deployment with Custom Domain'
 
 Parameters:
   LambdaCodeBucket:
@@ -8,6 +8,18 @@ Parameters:
   LambdaCodeKey:
     Type: String
     Description: S3 key for Lambda code ZIP
+  DomainName:
+    Type: String
+    Description: Your custom domain name (e.g., kpcl.yourdomain.com)
+    Default: ""
+  CertificateArn:
+    Type: String
+    Description: ACM Certificate ARN for your domain (leave empty if not using custom domain)
+    Default: ""
+
+Conditions:
+  HasCustomDomain: !Not [!Equals [!Ref DomainName, ""]]
+  HasCertificate: !Not [!Equals [!Ref CertificateArn, ""]]
 
 Resources:
   # Lambda Execution Role
@@ -172,6 +184,122 @@ Resources:
       RestApiId: !Ref ApiGateway
       StageName: prod
 
+  # CloudFront Distribution
+  ApiGatewayCloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - Id: ApiGatewayOrigin
+            DomainName: !Sub '${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com'
+            CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginProtocolPolicy: https-only
+        DefaultCacheBehavior:
+          TargetOriginId: ApiGatewayOrigin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - POST
+            - OPTIONS
+            - PUT
+            - DELETE
+            - PATCH
+          CachedMethods:
+            - GET
+            - HEAD
+          ForwardedValues:
+            QueryString: true
+            Cookies:
+              Forward: all
+          MinTTL: 0
+          DefaultTTL: 0
+          MaxTTL: 0
+        ViewerCertificate:
+          AcmCertificateArn: !If
+            - HasCertificate
+            - !Ref CertificateArn
+            - !Ref "AWS::NoValue"
+          SslSupportMethod: sni-only
+        PriceClass: PriceClass_All
+        Enabled: 'true'
+
+  # CloudFront Distribution for Custom Domain and Caching
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Condition: HasCustomDomain
+    Properties:
+      DistributionConfig:
+        Origins:
+          - Id: ApiGatewayOrigin
+            DomainName: !Sub '${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com'
+            CustomOriginConfig:
+              HTTPPort: 443
+              HTTPSPort: 443
+              OriginProtocolPolicy: https-only
+            OriginPath: '/prod'
+        DefaultCacheBehavior:
+          TargetOriginId: ApiGatewayOrigin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - POST
+            - OPTIONS
+            - PUT
+            - DELETE
+            - PATCH
+            - HEAD
+          CachedMethods:
+            - GET
+            - HEAD
+          ForwardedValues:
+            QueryString: true
+            Headers:
+              - Authorization
+              - Content-Type
+              - Host
+            Cookies:
+              Forward: all
+          MinTTL: 0
+          DefaultTTL: 0
+          MaxTTL: 300
+          Compress: true
+        Aliases:
+          - !Ref DomainName
+        ViewerCertificate: !If
+          - HasCertificate
+          - AcmCertificateArn: !Ref CertificateArn
+            SslSupportMethod: sni-only
+            MinimumProtocolVersion: TLSv1.2_2021
+          - CloudFrontDefaultCertificate: true
+        PriceClass: PriceClass_100
+        Enabled: true
+        HttpVersion: http2
+        Comment: !Sub 'KPCL Automation System - ${DomainName}'
+
+  # API Gateway Custom Domain
+  ApiGatewayDomainName:
+    Type: AWS::ApiGateway::DomainName
+    Condition: HasCustomDomain
+    Properties:
+      DomainName: !Sub 'api.${DomainName}'
+      RegionalCertificateArn: !Ref CertificateArn
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+      SecurityPolicy: TLS_1_2
+
+  # API Gateway Base Path Mapping
+  ApiGatewayBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Condition: HasCustomDomain
+    DependsOn: ApiGatewayDeployment
+    Properties:
+      DomainName: !Ref ApiGatewayDomainName
+      RestApiId: !Ref ApiGateway
+      Stage: prod
+
   # CloudWatch Log Group
   LogGroup:
     Type: AWS::Logs::LogGroup
@@ -232,4 +360,41 @@ Outputs:
 
   ScheduleExpression:
     Description: 'CloudWatch Events schedule expression'
-    Value: 'cron(29 1 * * ? *) - Daily at 6:59:59 AM IST'
+    Value: 'cron(59 1 * * ? *) - Daily at 6:59:59 AM IST'
+
+  CloudFrontDistributionId:
+    Description: 'CloudFront Distribution ID'
+    Value: !If
+      - HasCustomDomain
+      - !Ref CloudFrontDistribution
+      - !Ref "AWS::NoValue"
+    Export:
+      Name: !Sub '${AWS::StackName}-CloudFrontId'
+
+  CustomDomainName:
+    Description: 'Custom domain name for the application'
+    Value: !If
+      - HasCustomDomain
+      - !Sub 'https://${DomainName}'
+      - !Ref "AWS::NoValue"
+
+  ApiGatewayDomainName:
+    Description: 'API Gateway custom domain name'
+    Value: !If
+      - HasCustomDomain
+      - !Sub 'https://api.${DomainName}'
+      - !Ref "AWS::NoValue"
+
+  CloudFrontDomainName:
+    Description: 'CloudFront distribution domain name'
+    Value: !If
+      - HasCustomDomain
+      - !GetAtt CloudFrontDistribution.DomainName
+      - !Ref "AWS::NoValue"
+
+  CloudFrontDistributionDomainName:
+    Description: 'CloudFront Distribution Domain Name'
+    Value: !If
+      - HasCustomDomain
+      - !Sub '${ApiGatewayCloudFrontDistribution}.cloudfront.net'
+      - !Ref "AWS::NoValue"
