@@ -18,6 +18,7 @@ def index():
 
 @app.route('/status')
 def status():
+    return 'OK', 200
     """Health check endpoint"""
     deployment_info = {
         'status': 'healthy',
@@ -149,4 +150,4 @@ def gatepass():
     return render_template('gatepass.html')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
