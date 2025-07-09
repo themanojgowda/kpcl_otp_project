@@ -253,7 +253,8 @@ Resources:
   ApiGatewayBasePathMapping:
     Type: AWS::ApiGateway::BasePathMapping
     Condition: HasCustomDomain
-    DependsOn: ApiGatewayDeployment
+
+    DependsOn: ApiDeployment #1.0.3
     Properties:
       DomainName: !Ref ApiGatewayDomainName
       RestApiId: !Ref ApiGateway
@@ -355,5 +356,5 @@ Outputs:
     Description: 'CloudFront Distribution Domain Name'
     Value: !If
       - HasCustomDomain
-      - !GetAtt CloudFrontDistribution.DomainName
+      - !Sub '${ApiGatewayCloudFrontDistribution}.cloudfront.net'
       - !Ref "AWS::NoValue"
