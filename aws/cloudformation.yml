@@ -294,7 +294,7 @@ Resources:
   ApiGatewayBasePathMapping:
     Type: AWS::ApiGateway::BasePathMapping
     Condition: HasCustomDomain
-    DependsOn: ApiDeployment
+    DependsOn: ApiDeployment #1.0.3
     Properties:
       DomainName: !Ref ApiGatewayDomainName
       RestApiId: !Ref ApiGateway
