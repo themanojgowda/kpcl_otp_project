@@ -5,6 +5,16 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      domain_name:
+        description: 'Custom domain name (e.g., kpcl.yourdomain.com)'
+        required: false
+        type: string
+      certificate_arn:
+        description: 'ACM Certificate ARN'
+        required: false
+        type: string
 
 env:
   AWS_REGION: ap-south-1
@@ -43,7 +53,7 @@ jobs:
     - uses: actions/checkout@v3
     
     - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v2
+      uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -104,12 +114,22 @@ jobs:
         
     - name: Deploy CloudFormation
       run: |
+        # Build parameters for CloudFormation
+        PARAMS="LambdaCodeBucket=kpcl-automation-code-${{ github.run_number }} LambdaCodeKey=kpcl-automation.zip"
+        
+        # Add custom domain parameters if provided
+        if [[ -n "${{ github.event.inputs.domain_name }}" ]]; then
+          PARAMS="$PARAMS DomainName=${{ github.event.inputs.domain_name }}"
+        fi
+        
+        if [[ -n "${{ github.event.inputs.certificate_arn }}" ]]; then
+          PARAMS="$PARAMS CertificateArn=${{ github.event.inputs.certificate_arn }}"
+        fi
+        
         aws cloudformation deploy \
           --template-file aws/cloudformation.yml \
           --stack-name kpcl-automation \
-          --parameter-overrides \
-            LambdaCodeBucket=kpcl-automation-code-${{ github.run_number }} \
-            LambdaCodeKey=kpcl-automation.zip \
+          --parameter-overrides $PARAMS \
           --capabilities CAPABILITY_IAM \
           --region ${{ env.AWS_REGION }}
           
@@ -130,6 +150,18 @@ jobs:
     - name: Deployment summary
       run: |
         echo "🚀 Deployment completed!"
-        echo "🌐 Web Interface: ${{ steps.get-url.outputs.api_url }}"
+        
+        if [[ -n "${{ github.event.inputs.domain_name }}" ]]; then
+          echo "🌐 Custom Domain: https://${{ github.event.inputs.domain_name }}"
+          echo "📋 DNS Setup Required: Point your domain to CloudFront distribution"
+        fi
+        
+        echo "📡 API Gateway URL: ${{ steps.get-url.outputs.api_url }}"
         echo "⏰ Scheduled for: 6:59:59 AM IST daily"
-        echo "📊 Monitor: https://console.aws.amazon.com/lambda/home?region=${{ env.AWS_REGION }}#/functions/kpcl-otp-automation"
+        echo "🕕 User Login Window: 6:45-6:55 AM IST"
+        echo "📊 Monitor: https://console.aws.amazon.com/lambda/home?region=${{ env.AWS_REGION }}#/functions/kpcl-automation-function"
+        echo ""
+        echo "📋 Next Steps:"
+        echo "1. Update users.json in AWS Secrets Manager with real session data"
+        echo "2. Test login flow between 6:45-6:55 AM"
+        echo "3. Monitor CloudWatch logs for execution results"
