@@ -184,47 +184,6 @@ Resources:
       RestApiId: !Ref ApiGateway
       StageName: prod
 
-  # CloudFront Distribution
-  ApiGatewayCloudFrontDistribution:
-    Type: AWS::CloudFront::Distribution
-    Properties:
-      DistributionConfig:
-        Origins:
-          - Id: ApiGatewayOrigin
-            DomainName: !Sub '${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com'
-            CustomOriginConfig:
-              HTTPPort: 80
-              HTTPSPort: 443
-              OriginProtocolPolicy: https-only
-        DefaultCacheBehavior:
-          TargetOriginId: ApiGatewayOrigin
-          ViewerProtocolPolicy: redirect-to-https
-          AllowedMethods:
-            - GET
-            - POST
-            - OPTIONS
-            - PUT
-            - DELETE
-            - PATCH
-          CachedMethods:
-            - GET
-            - HEAD
-          ForwardedValues:
-            QueryString: true
-            Cookies:
-              Forward: all
-          MinTTL: 0
-          DefaultTTL: 0
-          MaxTTL: 0
-        ViewerCertificate:
-          AcmCertificateArn: !If
-            - HasCertificate
-            - !Ref CertificateArn
-            - !Ref "AWS::NoValue"
-          SslSupportMethod: sni-only
-        PriceClass: PriceClass_All
-        Enabled: 'true'
-
   # CloudFront Distribution for Custom Domain and Caching
   CloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
@@ -294,6 +253,7 @@ Resources:
   ApiGatewayBasePathMapping:
     Type: AWS::ApiGateway::BasePathMapping
     Condition: HasCustomDomain
+
     DependsOn: ApiDeployment #1.0.3
     Properties:
       DomainName: !Ref ApiGatewayDomainName

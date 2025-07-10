@@ -130,7 +130,7 @@ jobs:
           --template-file aws/cloudformation.yml \
           --stack-name kpcl-automation \
           --parameter-overrides $PARAMS \
-          --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
+          --capabilities CAPABILITY_IAM \
           --region ${{ env.AWS_REGION }}
           
     - name: Get API URL
